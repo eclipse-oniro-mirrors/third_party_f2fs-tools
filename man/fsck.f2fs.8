@@ -52,7 +52,13 @@ Enable to fix all the inconsistency in the partition.
 Enable to show all the filenames and inode numbers stored in the image
 .TP
 .BI \-p " enable preen mode"
-Same as "-a" to support general fsck convention.
+Same as "-a" to support general fsck convention. The mode can be 0, 1,
+2, 6 or 7: 0 and 2 behave the same as \-a; 1 checks metadata consistency
+only; 6 checks metadata without fixing anything, exiting with 4 if a
+fix is needed; 7 checks whether the filesystem is marked as needing a
+fix (e.g. the EXTRA_NEED_FSCK_FLAG), exiting with 4 if a fix is needed,
+0 otherwise, and 8 if the device is not a valid f2fs. In modes 6 and 7,
+\-f or \-y overrides the check-only behavior and forces a full fix.
 .TP
 .BI \-t " show stored directory tree"
 Enable to show every directory entries in the partition.

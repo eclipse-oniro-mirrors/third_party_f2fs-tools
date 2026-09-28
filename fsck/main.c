@@ -73,7 +73,7 @@ void fsck_usage()
 	MSG(0, "  -l show superblock/checkpoint\n");
 	MSG(0, "  -M show a file map\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
-	MSG(0, "  -p preen mode [default:0 the same as -a [0|1|2]]\n");
+	MSG(0, "  -p preen mode [default:0 the same as -a [0|1|2|6|7]]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
 	MSG(0, "  -q preserve quota limits\n");
@@ -299,12 +299,14 @@ void f2fs_parse_options(int argc, char *argv[])
 					fsck_usage();
 				break;
 			case 'p':
-				/* preen mode has different levels:
-				 *  0: default level, the same as -a
-				 *  1: check meta
-				 *  2: same as 0, but will skip some
-				 *     check for old kernel
-				 */
+			/* preen mode has different levels:
+			 *  0: default level, the same as -a
+			 *  1: check meta
+			 *  2: same as 0, but will skip some
+			 *     check for old kernel
+			 *  6: check only, never fix
+			 *  7: check EXTRA_NEED_FSCK_FLAG only
+			 */
 				if (optarg[0] == '-' || !is_digits(optarg) ||
 							optind == argc) {
 					MSG(0, "Info: Use default preen mode\n");
@@ -314,10 +316,17 @@ void f2fs_parse_options(int argc, char *argv[])
 					break;
 				}
 				c.preen_mode = atoi(optarg);
+				if (c.preen_mode == PREEN_MODE_6 ||
+						c.preen_mode == PREEN_MODE_7) {
+					c.auto_fix = 0;
+					MSG(0, "Info: Check only in preen mode %d\n",
+							c.preen_mode);
+					break;
+				}
 				if (c.preen_mode < 0)
 					c.preen_mode = PREEN_MODE_0;
-				else if (c.preen_mode >= PREEN_MODE_MAX)
-					c.preen_mode = PREEN_MODE_MAX - 1;
+				else if (c.preen_mode > PREEN_MODE_2)
+					c.preen_mode = PREEN_MODE_2;
 				if (c.preen_mode == PREEN_MODE_0 ||
 					c.preen_mode == PREEN_MODE_2)
 					c.auto_fix = 1;
@@ -898,6 +907,20 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 			if (!c.ro)
 				c.fix_on = 1;
 			break;
+		case PREEN_MODE_6:
+			if (fsck_chk_meta(sbi)) {
+				DMD_ADD_ERROR(LOG_TYP_FSCK, PR_FSCK_META_MISMATCH);
+				MSG(0, "[FSCK] F2FS metadata   [Fail]\n");
+				fsck_free(sbi, true);
+				return FSCK_ERRORS_LEFT_UNCORRECTED;
+			}
+			MSG(0, "[FSCK] F2FS metadata   [Ok..]\n");
+			fsck_free(sbi, true);
+			return FSCK_SUCCESS;
+		case PREEN_MODE_7:
+			MSG(0, "Info: EXTRA_NEED_FSCK_FLAG is not set\n");
+			fsck_free(sbi, true);
+			return FSCK_SUCCESS;
 		}
 	} else if (c.preen_mode) {
 		/*
@@ -910,6 +933,13 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 		 *     we set fix_on = 1 here, so that fsck can fix errors
 		 *     automatically
 		*/
+		if ((c.preen_mode == PREEN_MODE_6 ||
+				c.preen_mode == PREEN_MODE_7) && !c.force) {
+			MSG(0, "\tError: fsck is needed, but preen mode "
+				"%d is check only\n", c.preen_mode);
+			fsck_free(sbi, true);
+			return FSCK_ERRORS_LEFT_UNCORRECTED;
+		}
 		c.fix_on = 1;
 	}
 
@@ -1215,6 +1245,9 @@ fsck_again:
 		if (ret == 1) {
 			MSG(0, "Info: No error was reported\n");
 			ret = 0;
+		} else if (ret < 0 && (c.preen_mode == PREEN_MODE_6 ||
+				c.preen_mode == PREEN_MODE_7)) {
+			ret = FSCK_OPERATIONAL_ERROR;
 		}
 		goto out_err;
 	}
@@ -1274,7 +1307,9 @@ fsck_again:
 	f2fs_do_umount(sbi);
 
 	if (c.func == FSCK && c.bug_on) {
-		if (!c.ro && c.fix_on == 0 && c.auto_fix == 0 && !c.dry_run) {
+		if (!c.ro && c.fix_on == 0 && c.auto_fix == 0 && !c.dry_run &&
+				c.preen_mode != PREEN_MODE_6 &&
+				c.preen_mode != PREEN_MODE_7) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");

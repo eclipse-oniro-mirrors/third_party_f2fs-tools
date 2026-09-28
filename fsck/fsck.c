@@ -2420,10 +2420,13 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			cbc.cnt = 0;
 			cbc.cheader_pgofs = CHEADER_PGOFS_NONE;
 
-			if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
+			if ((c.preen_mode == PREEN_MODE_1 ||
+					c.preen_mode == PREEN_MODE_6) && !c.fix_on) {
 				get_node_info(sbi, ino, &ni);
 				if (!IS_VALID_NID(sbi, ino) ||
 				    !IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+					if (c.preen_mode == PREEN_MODE_6)
+						MSG(0, "\tError: invalid orphan inode [0x%x]\n", ino);
 					free(orphan_blk);
 					free(new_blk);
 					return -EINVAL;
@@ -2481,11 +2484,16 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 		cbc.cnt = 0;
 		cbc.cheader_pgofs = CHEADER_PGOFS_NONE;
 
-		if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
+		if ((c.preen_mode == PREEN_MODE_1 ||
+					c.preen_mode == PREEN_MODE_6) && !c.fix_on) {
 			get_node_info(sbi, ino, &ni);
 			if (!IS_VALID_NID(sbi, ino) ||
-					!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+					!IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+				if (c.preen_mode == PREEN_MODE_6)
+					MSG(0, "\tError: invalid quota inode, qtype [%d] ino [0x%x]\n",
+						qtype, ino);
 				return -EINVAL;
+			}
 			continue;
 		}
 		ret = fsck_chk_node_blk(sbi, NULL, ino,
