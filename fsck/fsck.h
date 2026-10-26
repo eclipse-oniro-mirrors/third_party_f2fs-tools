@@ -38,7 +38,8 @@ enum {
 	PREEN_MODE_0,
 	PREEN_MODE_1,
 	PREEN_MODE_2,
-	PREEN_MODE_MAX
+	PREEN_MODE_6 = 6,
+	PREEN_MODE_7 = 7,
 };
 
 enum {
