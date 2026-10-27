@@ -917,10 +917,6 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 			MSG(0, "[FSCK] F2FS metadata   [Ok..]\n");
 			fsck_free(sbi, true);
 			return FSCK_SUCCESS;
-		case PREEN_MODE_7:
-			MSG(0, "Info: EXTRA_NEED_FSCK_FLAG is not set\n");
-			fsck_free(sbi, true);
-			return FSCK_SUCCESS;
 		}
 	} else if (c.preen_mode) {
 		/*
@@ -933,8 +929,7 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 		 *     we set fix_on = 1 here, so that fsck can fix errors
 		 *     automatically
 		*/
-		if ((c.preen_mode == PREEN_MODE_6 ||
-				c.preen_mode == PREEN_MODE_7) && !c.force) {
+		if (c.preen_mode == PREEN_MODE_6 && !c.force) {
 			MSG(0, "\tError: fsck is needed, but preen mode "
 				"%d is check only\n", c.preen_mode);
 			fsck_free(sbi, true);
@@ -1245,6 +1240,15 @@ fsck_again:
 		if (ret == 1) {
 			MSG(0, "Info: No error was reported\n");
 			ret = 0;
+		} else if (ret == FSCK_P7_EARLY_RETURN) {
+			if (c.fix_on || c.bug_on) {
+				MSG(0, "\tError: fsck is needed, but preen mode 7 "
+					"is check only\n");
+				ret = FSCK_ERRORS_LEFT_UNCORRECTED;
+			} else {
+				MSG(0, "Info: EXTRA_NEED_FSCK_FLAG is not set\n");
+				ret = FSCK_SUCCESS;
+			}
 		} else if (ret < 0 && (c.preen_mode == PREEN_MODE_6 ||
 				c.preen_mode == PREEN_MODE_7)) {
 			ret = FSCK_OPERATIONAL_ERROR;
