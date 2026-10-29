@@ -42,6 +42,8 @@ enum {
 	PREEN_MODE_7 = 7,
 };
 
+#define FSCK_P7_EARLY_RETURN	3
+
 enum {
 	NOERROR,
 	EWRONG_OPT,

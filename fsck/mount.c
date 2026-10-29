@@ -3873,6 +3873,11 @@ out:
 	sbi->last_valid_block_count = sbi->total_valid_block_count;
 	sbi->alloc_valid_block_count = 0;
 
+	if (c.func == FSCK && c.preen_mode == PREEN_MODE_7 && !c.force) {
+		f2fs_should_proceed(sb, get_cp(ckpt_flags));
+		return FSCK_P7_EARLY_RETURN;
+	}
+
 	if (early_build_segment_manager(sbi)) {
 		DMD_ADD_ERROR(LOG_TYP_FSCK, PR_BUILD_SEGMENT_MANAGER_ERROR);
 		ERR_MSG("early_build_segment_manager failed\n");
