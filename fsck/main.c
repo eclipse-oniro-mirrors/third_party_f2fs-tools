@@ -940,6 +940,8 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 
 	if (c.fix_on || c.bug_on) {
 		DMD_ADD_ERROR(LOG_TYP_FSCK, PR_FULL_DISK_FSCK);
+		printf("[FULL_FSCK] total nodes %" PRIu64 "\n", (u64)sbi->total_valid_node_count);
+		fflush(stdout);
 	}
 
 	fsck_chk_checkpoint(sbi);

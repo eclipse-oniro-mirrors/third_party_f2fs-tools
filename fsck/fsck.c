@@ -17,6 +17,8 @@
 #include "fsck_debug.h"
 #include "securec.h"
 
+#define FSCK_SCAN_NODE_SPEED 50000
+
 char *tree_mark;
 uint32_t tree_mark_size = 256;
 
@@ -608,18 +610,25 @@ int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		fsck->chk.valid_blk_cnt++;
 		fsck->chk.valid_node_cnt++;
 
-		/* Progress report */
+		/* Progress report:one line per 1% of the valid node count. */
 		if (!c.show_file_map && sbi->total_valid_node_count > 1000) {
-			unsigned int p10 = sbi->total_valid_node_count / 10;
+			unsigned int p100 = sbi->total_valid_node_count / 100;
+			u64 remaining = 0;
+			unsigned int leftTime;
 
-			if (sbi->fsck->chk.checked_node_cnt++ % p10)
+			if (sbi->fsck->chk.checked_node_cnt++ % p100)
 				return 0;
+			
+			if (sbi->fsck->chk.checked_node_cnt < sbi->total_valid_node_count) {
+				remaining = sbi->total_valid_node_count - sbi->fsck->chk.checked_node_cnt;
+			}
+			leftTime = (unsigned int)(remaining / FSCK_SCAN_NODE_SPEED);
 
-			printf("[FSCK] Check node %"PRIu64" / %u (%.2f%%)\n",
+			printf("[FSCK] Check node %"PRIu64" / %u (%.2f%%) left_time=%u\n",
 				sbi->fsck->chk.checked_node_cnt,
 				sbi->total_valid_node_count,
-				10 * (float)sbi->fsck->chk.checked_node_cnt /
-				p10);
+				(float)sbi->fsck->chk.checked_node_cnt / p100,
+				leftTime);
 		}
 	}
 	return 0;
